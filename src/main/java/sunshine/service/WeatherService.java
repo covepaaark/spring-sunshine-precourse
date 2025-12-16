@@ -1,11 +1,13 @@
 package sunshine.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import sunshine.dto.CurrentWeather;
 import sunshine.dto.WeatherResponse;
 import sunshine.dto.WeatherSummary;
+import sunshine.exception.WeatherApiException;
 import sunshine.model.City;
 import sunshine.util.WeatherCodeConverter;
 
@@ -25,14 +27,25 @@ public class WeatherService {
     }
 
     private WeatherResponse fetchWeatherData(City city) {
-        String url = UriComponentsBuilder.fromHttpUrl(API_URL)
+        String url = buildApiUrl(city);
+        return callWeatherApi(url);
+    }
+
+    private String buildApiUrl(City city) {
+        return UriComponentsBuilder.fromHttpUrl(API_URL)
                 .queryParam("latitude", city.getLatitude())
                 .queryParam("longitude", city.getLongitude())
                 .queryParam("current", "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code")
                 .queryParam("timezone", "auto")
                 .toUriString();
+    }
 
-        return restTemplate.getForObject(url, WeatherResponse.class);
+    private WeatherResponse callWeatherApi(String url) {
+        try {
+            return restTemplate.getForObject(url, WeatherResponse.class);
+        } catch (RestClientException e) {
+            throw new WeatherApiException("Failed to fetch weather data from external API", e);
+        }
     }
 
     private WeatherSummary createWeatherSummary(City city, WeatherResponse weatherResponse) {
